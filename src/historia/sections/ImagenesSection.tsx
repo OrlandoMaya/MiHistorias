@@ -1,6 +1,7 @@
 import { FileText, ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +18,7 @@ import type { SectionProps } from './BasicSections';
 export function ImagenesSection(props: SectionProps) {
   const [estudios = [], setEstudios] = useField<ImagenEstudio[]>('imagenes');
   const [uploading, setUploading] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const update = (id: string, patch: Partial<ImagenEstudio>) =>
     setEstudios(estudios.map((e) => (e.id === id ? { ...e, ...patch } : e)));
@@ -66,7 +68,14 @@ export function ImagenesSection(props: SectionProps) {
                 variant="ghost"
                 className="ml-auto"
                 aria-label="Eliminar estudio"
-                onClick={() => confirm('¿Eliminar este estudio?') && setEstudios(estudios.filter((e) => e.id !== estudio.id))}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `¿Eliminar el estudio${estudio.estudio ? ` «${estudio.estudio}»` : ''}?`,
+                    description: 'Se borrarán el reporte, la interpretación y los archivos adjuntos.',
+                    icon: Trash2,
+                  });
+                  if (ok) setEstudios((prev = []) => prev.filter((e) => e.id !== estudio.id));
+                }}
               >
                 <Trash2 />
               </Button>
@@ -95,7 +104,10 @@ export function ImagenesSection(props: SectionProps) {
                     type="button"
                     aria-label="Quitar archivo"
                     className="absolute top-1 right-1 rounded-full bg-card/90 p-0.5 opacity-0 shadow transition group-hover:opacity-100"
-                    onClick={() => update(estudio.id, { archivos: estudio.archivos.filter((x) => x.url !== a.url) })}
+                    onClick={async () => {
+                      const ok = await confirm({ title: `¿Quitar «${a.name}»?`, description: 'El archivo dejará de estar adjunto a este estudio.', confirmText: 'Quitar', icon: Trash2 });
+                      if (ok) update(estudio.id, { archivos: estudio.archivos.filter((x) => x.url !== a.url) });
+                    }}
                   >
                     <X className="size-3.5" />
                   </button>

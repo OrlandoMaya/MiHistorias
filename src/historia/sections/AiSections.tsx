@@ -1,13 +1,25 @@
+import { Replace } from 'lucide-react';
 import { toast } from 'sonner';
 import { AiChat } from '@/components/AiChat';
+import { useConfirm } from '@/components/confirm';
 import { useEditor } from '../editor-context';
 import { FieldTextarea } from '../fields';
 import { SectionCard } from '../SectionCard';
 import type { SectionProps } from './BasicSections';
 
 function useInsert(path: 'analisis' | 'dxDiferenciales') {
-  const { set } = useEditor();
-  return (text: string, how: 'append' | 'replace') => {
+  const { data, set } = useEditor();
+  const confirm = useConfirm();
+  return async (text: string, how: 'append' | 'replace') => {
+    if (how === 'replace' && data[path]?.trim()) {
+      const ok = await confirm({
+        title: '¿Reemplazar lo que ya escribiste?',
+        description: 'El texto actual de esta sección se cambiará por la respuesta de la IA.',
+        confirmText: 'Reemplazar',
+        icon: Replace,
+      });
+      if (!ok) return;
+    }
     set(path, (prev: string | undefined) => (how === 'replace' || !prev?.trim() ? text : `${prev.trimEnd()}\n\n${text}`));
     toast.success(how === 'replace' ? 'Texto reemplazado' : 'Texto insertado');
   };

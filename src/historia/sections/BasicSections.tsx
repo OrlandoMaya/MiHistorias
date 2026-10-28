@@ -1,4 +1,5 @@
 import { CircleCheck, CircleDot, Plus, Trash2 } from 'lucide-react';
+import { useConfirm } from '@/components/confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ageFrom, cn, uid } from '@/lib/utils';
@@ -206,6 +207,7 @@ export function PlanSection(props: SectionProps) {
 
 export function ProblemasSection(props: SectionProps) {
   const [problemas = [], setProblemas] = useField<Problema[]>('problemas');
+  const confirm = useConfirm();
   const update = (id: string, patch: Partial<Problema>) =>
     setProblemas(problemas.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 
@@ -236,7 +238,12 @@ export function ProblemasSection(props: SectionProps) {
               size="icon-sm"
               variant="ghost"
               aria-label="Eliminar problema"
-              onClick={() => setProblemas(problemas.filter((x) => x.id !== p.id))}
+              onClick={async () => {
+                const ok =
+                  !p.texto.trim() ||
+                  (await confirm({ title: '¿Eliminar este problema?', description: `«${p.texto}»`, icon: Trash2 }));
+                if (ok) setProblemas((prev = []) => prev.filter((x) => x.id !== p.id));
+              }}
             >
               <Trash2 />
             </Button>

@@ -61,8 +61,8 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-0 sm:p-6">
-      <div className="glass-shell grid w-full max-w-[1180px] overflow-hidden border border-white/70 sm:rounded-[2rem] lg:min-h-[720px] lg:grid-cols-[1fr_1.1fr]">
+    <div className="min-h-screen bg-gradient-to-br from-[#f4f7fa] via-[#eef2f6] to-[#e3e9f0]">
+      <div className="mx-auto grid min-h-screen w-full max-w-[1440px] lg:grid-cols-[1fr_1.1fr]">
         {/* Formulario */}
         <div className="flex flex-col p-6 sm:p-10 lg:p-12">
           <Logo />
@@ -161,7 +161,7 @@ export default function AuthPage() {
         </div>
 
         {/* Panel visual */}
-        <div className="relative hidden flex-col gap-4 overflow-hidden bg-[#dfe7ef] p-8 lg:flex">
+        <div className="relative hidden flex-col justify-center gap-4 p-10 lg:flex xl:px-16">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#ffffff_0%,rgba(255,255,255,0.4)_30%,transparent_60%)]" />
 
           <div className="relative grid grid-cols-[1.4fr_1fr] gap-3">

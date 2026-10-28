@@ -15,6 +15,7 @@ import {
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BodyFigure } from '@/components/BodyFigure';
+import { useConfirm } from '@/components/confirm';
 import { Gauge } from '@/components/Gauge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { completionPercent } from '@/historia/completion';
 import type { Historia, HistoriaStatus } from '@/lib/api';
 import { cn, initials, relativeTime } from '@/lib/utils';
-import { STATUS_LABEL, useCreateHistoria, useDeleteHistoria, useHistorias, useSetStatus } from './useHistorias';
+import { STATUS_LABEL, useConfirmedStatus, useCreateHistoria, useDeleteHistoria, useHistorias } from './useHistorias';
 
 const AVATAR_TONES = ['bg-accent', 'bg-heart-soft text-heart', 'bg-info-soft text-info', 'bg-good-soft text-good'];
 const avatarTone = (id: string) => AVATAR_TONES[id.charCodeAt(0) % AVATAR_TONES.length];
@@ -73,8 +74,9 @@ function patientMeta(h: Historia) {
 export default function DashboardPage() {
   const { data: historias = [], isLoading } = useHistorias();
   const create = useCreateHistoria();
-  const setStatus = useSetStatus();
+  const changeStatus = useConfirmedStatus();
   const remove = useDeleteHistoria();
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<HistoriaStatus | 'todas'>('activa');
@@ -339,7 +341,7 @@ export default function DashboardPage() {
                         {[h.documento, patientMeta(h)].filter(Boolean).join(' · ') || 'Completa la identificación'}
                       </p>
                     </div>
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <Button size="icon-sm" variant="secondary" className="relative z-10" aria-label="Opciones">
                           <MoreHorizontal />
@@ -347,27 +349,31 @@ export default function DashboardPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {h.status !== 'activa' && (
-                          <DropdownMenuItem onSelect={() => setStatus.mutate({ id: h.id, status: 'activa' })}>
+                          <DropdownMenuItem onSelect={() => changeStatus(h.id, 'activa', h.patientName)}>
                             <RotateCcw /> Marcar activa
                           </DropdownMenuItem>
                         )}
                         {h.status !== 'alta' && (
-                          <DropdownMenuItem onSelect={() => setStatus.mutate({ id: h.id, status: 'alta' })}>
+                          <DropdownMenuItem onSelect={() => changeStatus(h.id, 'alta', h.patientName)}>
                             <CheckCircle2 /> Dar de alta
                           </DropdownMenuItem>
                         )}
                         {h.status !== 'archivada' && (
-                          <DropdownMenuItem onSelect={() => setStatus.mutate({ id: h.id, status: 'archivada' })}>
+                          <DropdownMenuItem onSelect={() => changeStatus(h.id, 'archivada', h.patientName)}>
                             <Archive /> Archivar
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           variant="destructive"
-                          onSelect={() =>
-                            confirm(`¿Eliminar la historia de ${h.patientName || 'este paciente'}? Esta acción no se puede deshacer.`) &&
-                            remove.mutate(h.id)
-                          }
+                          onSelect={async () => {
+                            const ok = await confirm({
+                              title: `¿Eliminar la historia de ${h.patientName || 'este paciente'}?`,
+                              description: 'Se borrarán también todas sus páginas de revisión y notas. No se puede deshacer.',
+                              icon: Trash2,
+                            });
+                            if (ok) remove.mutate(h.id);
+                          }}
                         >
                           <Trash2 /> Eliminar
                         </DropdownMenuItem>

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm';
 import { Button } from '@/components/ui/button';
 import { streamAiChat, type ChatMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ export function AiChat({ historiaId, mode, title, suggestions, beforeSend, onIns
     }
   });
   const [input, setInput] = useState('');
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -89,7 +91,15 @@ export function AiChat({ historiaId, mode, title, suggestions, beforeSend, onIns
           <p className="text-[11px] text-muted-foreground">Lee toda la historia guardada</p>
         </div>
         {messages.length > 0 && (
-          <Button size="icon-sm" variant="ghost" aria-label="Borrar conversación" onClick={() => setMessages([])} disabled={busy}>
+          <Button size="icon-sm" variant="ghost" aria-label="Borrar conversación" onClick={async () => {
+              const ok = await confirm({
+                title: '¿Borrar la conversación?',
+                description: 'Se perderán los mensajes de este chat. Lo que ya insertaste en la historia se mantiene.',
+                confirmText: 'Borrar',
+                icon: Trash2,
+              });
+              if (ok) setMessages([]);
+            }} disabled={busy}>
             <Trash2 />
           </Button>
         )}

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Archive, CheckCircle2, RotateCcw, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm';
 import { api, type Historia, type HistoriaStatus } from '@/lib/api';
 
 export function useHistorias() {
@@ -42,6 +44,38 @@ export function useDeleteHistoria() {
     },
     onError: (e) => toast.error(e.message),
   });
+}
+
+const STATUS_CONFIRM: Record<HistoriaStatus, { title: string; description: string; confirmText: string; icon: LucideIcon }> = {
+  activa: {
+    title: '¿Reactivar la historia de {nombre}?',
+    description: 'Volverá a aparecer en la lista de pacientes activos.',
+    confirmText: 'Reactivar',
+    icon: RotateCcw,
+  },
+  alta: {
+    title: '¿Dar de alta a {nombre}?',
+    description: 'La historia pasará a «De alta». Puedes reactivarla cuando quieras.',
+    confirmText: 'Dar de alta',
+    icon: CheckCircle2,
+  },
+  archivada: {
+    title: '¿Archivar la historia de {nombre}?',
+    description: 'Dejará de verse entre los activos, pero no se borra nada.',
+    confirmText: 'Archivar',
+    icon: Archive,
+  },
+};
+
+/** Cambia el estado de una historia pidiendo confirmación antes. */
+export function useConfirmedStatus() {
+  const confirm = useConfirm();
+  const setStatus = useSetStatus();
+  return async (id: string, status: HistoriaStatus, nombre: string) => {
+    const c = STATUS_CONFIRM[status];
+    const ok = await confirm({ ...c, title: c.title.replace('{nombre}', nombre || 'este paciente'), tone: 'default' });
+    if (ok) setStatus.mutate({ id, status });
+  };
 }
 
 export const STATUS_LABEL: Record<HistoriaStatus, string> = {

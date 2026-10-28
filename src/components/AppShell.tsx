@@ -1,6 +1,7 @@
 import { ChevronDown, LayoutGrid, LogOut, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useConfirm } from '@/components/confirm';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const create = useCreateHistoria();
+  const confirm = useConfirm();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f4f7fa] to-[#e9eef3]">
@@ -55,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Plus /> <span className="hidden sm:inline">Nueva historia</span>
           </Button>
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition hover:bg-card/70">
               <span className="flex size-9 items-center justify-center rounded-full bg-accent text-sm font-semibold">
                 {initials(user!.name)}
@@ -69,7 +71,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Sesión iniciada como {user!.name}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={logout}>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  const ok = await confirm({
+                    title: '¿Cerrar sesión?',
+                    description: 'Tus historias quedan guardadas. Podrás volver a entrar con tu correo y contraseña.',
+                    confirmText: 'Cerrar sesión',
+                    tone: 'default',
+                    icon: LogOut,
+                  });
+                  if (ok) logout();
+                }}
+              >
                 <LogOut /> Cerrar sesión
               </DropdownMenuItem>
             </DropdownMenuContent>

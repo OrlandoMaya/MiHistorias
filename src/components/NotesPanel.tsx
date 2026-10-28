@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ const TEMPLATES: Record<NotaTipo, string> = {
 
 function NotaEditor({ nota, onDeleted }: { nota: Nota; onDeleted: () => void }) {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [title, setTitle] = useState(nota.title);
   const [content, setContent] = useState(nota.content);
   const [preview, setPreview] = useState(false);
@@ -68,7 +70,12 @@ function NotaEditor({ nota, onDeleted }: { nota: Nota; onDeleted: () => void }) 
   };
 
   const remove = async () => {
-    if (!confirm('¿Eliminar esta página?')) return;
+    const ok = await confirm({
+      title: `¿Eliminar «${title || 'Sin título'}»?`,
+      description: 'Se borrará esta página y su contenido. No se puede deshacer.',
+      icon: Trash2,
+    });
+    if (!ok) return;
     window.clearTimeout(timer.current);
     timer.current = undefined;
     await api(`/notas/${nota.id}`, { method: 'DELETE' });

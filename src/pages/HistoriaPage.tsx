@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm';
 import { NotesPanel } from '@/components/NotesPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ import { ParaclinicosSection } from '@/historia/sections/ParaclinicosSection';
 import type { HistoriaData } from '@/historia/types';
 import { api, type Historia, type HistoriaStatus } from '@/lib/api';
 import { cn, getIn, initials, setIn } from '@/lib/utils';
-import { STATUS_LABEL, useDeleteHistoria, useSetStatus } from './useHistorias';
+import { STATUS_LABEL, useConfirmedStatus, useDeleteHistoria } from './useHistorias';
 
 const SECTION_COMPONENTS: Record<string, ComponentType<SectionProps>> = {
   identificacion: IdentificacionSection,
@@ -170,8 +171,9 @@ function ProgressRing({ value }: { value: number }) {
 function Editor({ historia }: { historia: Historia }) {
   const navigate = useNavigate();
   const { data, set, flush, saveState } = useAutosave(historia);
-  const setStatus = useSetStatus();
+  const changeStatus = useConfirmedStatus();
   const remove = useDeleteHistoria();
+  const confirm = useConfirm();
   const [tab, setTab] = useState('historia');
   const [active, setActive] = useState(SECTIONS[0].id);
 
@@ -236,7 +238,7 @@ function Editor({ historia }: { historia: Historia }) {
             <ProgressRing value={pct} />
             <Select
               value={historia.status}
-              onValueChange={(v) => setStatus.mutate({ id: historia.id, status: v as HistoriaStatus })}
+              onValueChange={(v) => changeStatus(historia.id, v as HistoriaStatus, id.nombre)}
             >
               <SelectTrigger className="h-10 w-36 rounded-full bg-card">
                 <SelectValue />
@@ -265,10 +267,14 @@ function Editor({ historia }: { historia: Historia }) {
               size="icon"
               variant="secondary"
               aria-label="Eliminar historia"
-              onClick={() =>
-                confirm('¿Eliminar esta historia y todas sus páginas? No se puede deshacer.') &&
-                remove.mutate(historia.id, { onSuccess: () => navigate('/') })
-              }
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `¿Eliminar la historia de ${id.nombre || 'este paciente'}?`,
+                  description: 'Se borrarán también todas sus páginas de revisión y notas. No se puede deshacer.',
+                  icon: Trash2,
+                });
+                if (ok) remove.mutate(historia.id, { onSuccess: () => navigate('/') });
+              }}
             >
               <Trash2 />
             </Button>

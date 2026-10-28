@@ -1,4 +1,5 @@
 import { CalendarDays, Plus, Table2, Trash2, X } from 'lucide-react';
+import { useConfirm } from '@/components/confirm';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ const emptyRow = (): ParaclinicoFila => ({ id: uid(), examen: '', resultado: '',
 
 export function ParaclinicosSection(props: SectionProps) {
   const [tablas = [], setTablas] = useField<ParaclinicoTabla[]>('paraclinicos');
+  const confirm = useConfirm();
 
   const updateTabla = (id: string, patch: Partial<ParaclinicoTabla>) =>
     setTablas(tablas.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -78,7 +80,14 @@ export function ParaclinicosSection(props: SectionProps) {
                   size="icon-sm"
                   variant="ghost"
                   aria-label="Eliminar tabla"
-                  onClick={() => confirm('¿Eliminar esta tabla de paraclínicos?') && setTablas(tablas.filter((t) => t.id !== tabla.id))}
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `¿Eliminar la tabla «${tabla.titulo || 'Paraclínicos'}»?`,
+                      description: `Se borrarán sus ${tabla.filas.length} filas y la interpretación.`,
+                      icon: Trash2,
+                    });
+                    if (ok) setTablas((prev = []) => prev.filter((t) => t.id !== tabla.id));
+                  }}
                 >
                   <Trash2 />
                 </Button>
