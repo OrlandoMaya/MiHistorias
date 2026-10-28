@@ -1,0 +1,7 @@
+# Solo para desarrollo en tu PC: Docker Compose lo carga solo cuando NO se pasa -f.
+# En el servidor se usa -f docker-compose.yml -f deploy/... (o COMPOSE_FILE), así que esto no aplica allá.
+services:
+  # Publica la API para que `npm run dev` del frontend (puerto 5173) pueda usarla.
+  mihistorias-api:
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"

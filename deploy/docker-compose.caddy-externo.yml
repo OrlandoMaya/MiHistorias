@@ -1,0 +1,18 @@
+# Conecta MiHistorias al Caddy que ya corre en Docker en el servidor.
+# Uso (desde la raíz del proyecto):
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.caddy-externo.yml --profile prod up -d --build
+#
+# CADDY_NETWORK (en .env) es la red de Docker donde está tu Caddy. Para verla:
+#   docker inspect <contenedor-caddy> --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+
+services:
+  # Solo la web entra a la red de Caddy; la API y la base de datos quedan aisladas.
+  mihistorias-web:
+    networks:
+      - default
+      - caddy
+
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK:?Define CADDY_NETWORK en .env (la red de Docker de tu Caddy)}

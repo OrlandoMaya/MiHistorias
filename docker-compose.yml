@@ -1,0 +1,58 @@
+# Local:     docker compose up -d --build            (con COMPOSE_PROFILES=prod en .env levanta todo en :8080)
+#            docker compose up -d db                 (solo PostgreSQL, para npm run dev)
+# Servidor:  docker compose -f docker-compose.yml -f deploy/docker-compose.caddy-externo.yml --profile prod up -d --build
+#            El HTTPS lo pone el Caddy del VPS (un solo Caddyfile para todos los sitios). Ver deploy/README.md
+name: mihistorias
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mihistorias}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mihistorias}
+      POSTGRES_DB: ${POSTGRES_DB:-mihistorias}
+    ports:
+      # Solo accesible desde la propia máquina, nunca expuesto a internet.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Nombres únicos: en la red compartida del Caddy del VPS no chocan con los "web"/"api" de otros proyectos.
+  mihistorias-api:
+    profiles: ["prod"]
+    build: ./backend
+    container_name: mihistorias-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-mihistorias}:${POSTGRES_PASSWORD:-mihistorias}@db:5432/${POSTGRES_DB:-mihistorias}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en el archivo .env}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      UPLOAD_DIR: /app/uploads
+      PORT: 3000
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  mihistorias-web:
+    profiles: ["prod"]
+    build: ./frontend
+    container_name: mihistorias-web
+    restart: unless-stopped
+    ports:
+      # Solo local (pruebas desde el servidor): desde internet se entra por el Caddy del VPS.
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    depends_on:
+      - mihistorias-api
+
+volumes:
+  pgdata:
+  uploads:

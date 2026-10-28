@@ -1,4 +1,5 @@
 import { ArrowUpRight, Eye, EyeOff, HeartPulse, Loader2, Lock, Mail, Sparkles, User } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Logo } from '@/components/AppShell';
@@ -6,6 +7,7 @@ import { BodyFigure } from '@/components/BodyFigure';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +46,11 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const { data: status } = useQuery({
+    queryKey: ['auth-status'],
+    queryFn: () => api<{ registration: boolean }>('/auth/status'),
+  });
+  const canRegister = status?.registration !== false;
   const [busy, setBusy] = useState(false);
   const isLogin = mode === 'login';
 
@@ -68,7 +75,7 @@ export default function AuthPage() {
           <Logo />
 
           <div className="mx-auto my-auto flex w-full max-w-[400px] flex-col py-10">
-            <div className="mb-8 grid grid-cols-2 gap-1 rounded-full bg-secondary p-1">
+            <div className={cn('mb-8 grid grid-cols-2 gap-1 rounded-full bg-secondary p-1', !canRegister && 'hidden')}>
               {(['login', 'register'] as const).map((m) => (
                 <button
                   key={m}
