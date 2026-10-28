@@ -47,7 +47,7 @@ Antes del primer arranque:
 | `JWT_SECRET` | `openssl rand -base64 48` |
 | `ANTHROPIC_API_KEY` | Tu clave de Anthropic para el asistente IA (opcional; sin ella la app funciona sin IA) |
 | `CADDY_NETWORK` | La red del paso 2 |
-| `WEB_PORT` | Un puerto libre del servidor, p. ej. `5020` (solo se usa para pruebas locales en `127.0.0.1`) |
+| `WEB_PORT` | `6000` (ya viene así). Solo escucha en `127.0.0.1`; desde internet se entra por Caddy |
 | `POSTGRES_PORT` | Un puerto libre, p. ej. `5433` (solo `127.0.0.1`; Devotion ya usa el `5432`) |
 
 ## 4. Levantar MiHistorias
@@ -55,7 +55,11 @@ Antes del primer arranque:
 ```bash
 docker compose -f docker-compose.yml -f deploy/docker-compose.caddy-externo.yml --profile prod up -d --build
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Networks}}' | grep mihistorias
+curl -s http://127.0.0.1:6000/api/auth/status      # {"status":"ok","registration":true}
 ```
+
+La web queda en el puerto **6000** del servidor (solo `127.0.0.1`). Pruébalo con `curl`, no con el navegador:
+Chrome y Firefox bloquean ese puerto (`ERR_UNSAFE_PORT`). Desde internet se entra por Caddy, que no usa ese puerto.
 
 Debe verse `mihistorias-web` en la red de Caddy y en `mihistorias_default`, y `mihistorias-api` /
 `mihistorias-db-1` solo en `mihistorias_default`. La primera vez la API crea las tablas sola.
@@ -151,4 +155,4 @@ docker run --rm -v mihistorias_uploads:/data -v "$PWD/respaldos":/in alpine tar 
 ## Otros escenarios
 
 - **Caddy instalado directo en el servidor (no Docker):** levanta solo con `--profile prod` (sin el segundo `-f`) y
-  en el bloque usa `reverse_proxy 127.0.0.1:<WEB_PORT>`.
+  en el bloque usa `reverse_proxy 127.0.0.1:6000`.

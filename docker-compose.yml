@@ -1,4 +1,4 @@
-# Local:     docker compose up -d --build            (con COMPOSE_PROFILES=prod en .env levanta todo en :8080)
+# Local:     docker compose up -d --build            (con COMPOSE_PROFILES=prod en .env levanta todo en :WEB_PORT)
 #            docker compose up -d db                 (solo PostgreSQL, para npm run dev)
 # Servidor:  docker compose -f docker-compose.yml -f deploy/docker-compose.caddy-externo.yml --profile prod up -d --build
 #            El HTTPS lo pone el Caddy del VPS (un solo Caddyfile para todos los sitios). Ver deploy/README.md
@@ -49,7 +49,7 @@ services:
     restart: unless-stopped
     ports:
       # Solo local (pruebas desde el servidor): desde internet se entra por el Caddy del VPS.
-      - "127.0.0.1:${WEB_PORT:-8080}:80"
+      - "127.0.0.1:${WEB_PORT:-6000}:80"
     depends_on:
       - mihistorias-api
 
