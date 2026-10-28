@@ -4,11 +4,13 @@ Tu Caddy corre en Docker y llega a cada app **por nombre de contenedor** en una 
 puertos. MiHistorias sigue ese mismo patrón (igual que Devotion):
 
 ```
-Internet ──HTTPS──▶ tu Caddy ──red compartida──▶ mihistorias-web (nginx) ──red interna──▶ mihistorias-api ──▶ PostgreSQL
+Internet ──HTTPS──▶ tu Caddy ──red compartida──┬─▶ mihistorias-web (nginx, :80) ──/api──┐
+                                               └─▶ mihistorias-api (:6000) ◀────────────┘──▶ PostgreSQL
 ```
 
-- Solo `mihistorias-web` entra a la red de Caddy. La API y la base de datos quedan en la red interna de MiHistorias:
-  ni Caddy ni los otros proyectos pueden verlas.
+- `mihistorias.pulsso.online` → `mihistorias-web:80` (la app; su nginx también le pasa `/api` a la API).
+- `mihistorias-api.pulsso.online` → `mihistorias-api:6000` (la API directa).
+- La web y la API entran a la red de Caddy. La base de datos queda en la red interna de MiHistorias.
 - Los contenedores se llaman `mihistorias-web` y `mihistorias-api` para no chocar con los `web`/`api` de otros
   proyectos en la red compartida.
 
@@ -19,8 +21,9 @@ En el panel de `pulsso.online`, crea:
 | Tipo | Nombre | Valor |
 |---|---|---|
 | `A` | `mihistorias` | la misma IP que `calendar.pulsso.online` y `devotion.pulsso.online` |
+| `A` | `mihistorias-api` | la misma IP |
 
-Comprueba: `dig +short mihistorias.pulsso.online`.
+Comprueba: `dig +short mihistorias.pulsso.online` y `dig +short mihistorias-api.pulsso.online`.
 
 ## 2. Saber la red de tu Caddy
 
@@ -47,7 +50,8 @@ Antes del primer arranque:
 | `JWT_SECRET` | `openssl rand -base64 48` |
 | `ANTHROPIC_API_KEY` | Tu clave de Anthropic para el asistente IA (opcional; sin ella la app funciona sin IA) |
 | `CADDY_NETWORK` | La red del paso 2 |
-| `WEB_PORT` | `6000` (ya viene así). Solo escucha en `127.0.0.1`; desde internet se entra por Caddy |
+| `API_PORT` | `6000` (ya viene así): el puerto de la API. Solo escucha en `127.0.0.1`; desde internet se entra por Caddy |
+| `WEB_PORT` | `8080` (ya viene así) o cualquier puerto libre. Solo `127.0.0.1` |
 | `POSTGRES_PORT` | Un puerto libre, p. ej. `5433` (solo `127.0.0.1`; Devotion ya usa el `5432`) |
 
 ## 4. Levantar MiHistorias
@@ -55,43 +59,47 @@ Antes del primer arranque:
 ```bash
 docker compose -f docker-compose.yml -f deploy/docker-compose.caddy-externo.yml --profile prod up -d --build
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Networks}}' | grep mihistorias
-curl -s http://127.0.0.1:6000/api/auth/status      # {"status":"ok","registration":true}
+curl -s http://127.0.0.1:6000/api/auth/status      # la API: {"status":"ok","registration":true}
 ```
 
-La web queda en el puerto **6000** del servidor (solo `127.0.0.1`). Pruébalo con `curl`, no con el navegador:
-Chrome y Firefox bloquean ese puerto (`ERR_UNSAFE_PORT`). Desde internet se entra por Caddy, que no usa ese puerto.
+La API queda en el puerto **6000** (solo `127.0.0.1` del servidor). Pruébala con `curl`, no con el navegador:
+Chrome y Firefox bloquean ese puerto (`ERR_UNSAFE_PORT`). Desde internet se entra por Caddy.
 
-Debe verse `mihistorias-web` en la red de Caddy y en `mihistorias_default`, y `mihistorias-api` /
+Deben verse `mihistorias-web` y `mihistorias-api` en la red de Caddy y en `mihistorias_default`, y
 `mihistorias-db-1` solo en `mihistorias_default`. La primera vez la API crea las tablas sola.
 
 > Para no escribir los dos `-f` cada vez, descomenta en `.env`:
 > `COMPOSE_FILE=docker-compose.yml:deploy/docker-compose.caddy-externo.yml` y `COMPOSE_PROFILES=prod`.
 > Desde entonces basta `docker compose up -d --build`.
->
-> El `docker-compose.override.yml` (que publica la API en el `3000` para desarrollo) **no** se carga en el
-> servidor, porque ahí siempre se indica `-f` o `COMPOSE_FILE`.
 
 ## 5. Agregar MiHistorias al Caddyfile del VPS
 
-Todos los sitios viven en **un solo Caddyfile** (el del Caddy de entrada). Agrega este bloque al final, junto a
+Todos los sitios viven en **un solo Caddyfile** (el del Caddy de entrada). Agrega estos bloques al final, junto a
 `calendar.pulsso.online` y `devotion.pulsso.online`:
 
 ```caddy
 mihistorias.pulsso.online {
 	# MiHistorias tiene login propio (cuentas privadas por usuario), asi que no lleva basic_auth.
-	# "mihistorias-web" es su nginx: sirve la app y le pasa /api a la API, que no esta en esta red.
+	# "mihistorias-web" es su nginx: sirve la app y le pasa /api a la API.
 	# Sin "encode" para no retrasar las respuestas en streaming del asistente IA.
 	reverse_proxy mihistorias-web:80 {
 		flush_interval -1
 	}
 }
+
+mihistorias-api.pulsso.online {
+	reverse_proxy mihistorias-api:6000 {
+		flush_interval -1
+	}
+}
 ```
 
-Valida y recarga:
+Valida y recrea el Caddy (en la carpeta de ese Caddy). Recrear, no solo `reload`: si el editor reemplazó el archivo al
+guardar, el contenedor puede seguir viendo el Caddyfile viejo.
 
 ```bash
 docker exec <contenedor-caddy> caddy validate --config /etc/caddy/Caddyfile
-docker exec <contenedor-caddy> caddy reload --config /etc/caddy/Caddyfile
+docker compose up -d --force-recreate
 ```
 
 **El certificado SSL es automático:** al cargar el bloque, Caddy lo pide a Let's Encrypt (unos segundos) y lo renueva
@@ -100,6 +108,7 @@ solo. Para comprobarlo:
 ```bash
 docker logs <contenedor-caddy> 2>&1 | grep -i mihistorias | tail -5   # "certificate obtained successfully"
 curl -s https://mihistorias.pulsso.online/api/auth/status             # {"status":"ok","registration":true}
+curl -s https://mihistorias-api.pulsso.online/api/auth/status         # lo mismo, directo a la API
 ```
 
 ## 6. Crear tu cuenta
@@ -145,8 +154,9 @@ docker run --rm -v mihistorias_uploads:/data -v "$PWD/respaldos":/in alpine tar 
 | Síntoma | Revisar |
 |---|---|
 | `network ... not found` al levantar | `CADDY_NETWORK` no coincide con la red de tu Caddy (paso 2). |
-| `port is already allocated` | `WEB_PORT` o `POSTGRES_PORT` ya los usa otro proyecto; pon otro libre en `.env`. |
+| `port is already allocated` | `API_PORT`, `WEB_PORT` o `POSTGRES_PORT` ya los usa otro proyecto; pon otro libre en `.env`. |
 | 502 en `mihistorias.pulsso.online` | `docker exec <contenedor-caddy> wget -qO- http://mihistorias-web/api/auth/status` debe responder. Si no, `mihistorias-web` no está en la red de Caddy. |
+| 502 en `mihistorias-api.pulsso.online` (`lookup mihistorias-api ... server misbehaving`) | `mihistorias-api` no está en la red de Caddy: levanta con el `-f deploy/docker-compose.caddy-externo.yml` y revisa `CADDY_NETWORK`. |
 | Error de SSL / sin certificado | Caddy no tiene el bloque cargado (paso 5) o el DNS no apunta al servidor. `docker logs <contenedor-caddy> 2>&1 \| grep -i mihistorias`. |
 | La API reinicia con `password authentication failed` | `POSTGRES_PASSWORD` cambió después de crear la base. Usa la original. |
 | El asistente IA dice que no está configurado | Falta `ANTHROPIC_API_KEY` en `.env`; agrégala y `up -d mihistorias-api`. |
@@ -155,4 +165,4 @@ docker run --rm -v mihistorias_uploads:/data -v "$PWD/respaldos":/in alpine tar 
 ## Otros escenarios
 
 - **Caddy instalado directo en el servidor (no Docker):** levanta solo con `--profile prod` (sin el segundo `-f`) y
-  en el bloque usa `reverse_proxy 127.0.0.1:6000`.
+  en los bloques usa `reverse_proxy 127.0.0.1:8080` (web) y `reverse_proxy 127.0.0.1:6000` (API).

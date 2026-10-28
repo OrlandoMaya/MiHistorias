@@ -13,7 +13,7 @@ async function bootstrap() {
   app.use(json({ limit: '10mb' }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useStaticAssets(UPLOAD_DIR, { prefix: '/api/files', maxAge: '7d' });
-  const port = Number(process.env.PORT ?? 3000);
+  const port = Number(process.env.PORT ?? 6000);
   await app.listen(port);
   console.log(`MiHistorias API escuchando en :${port}`);
 }

@@ -31,8 +31,8 @@ cp .env.example .env   # POSTGRES_PASSWORD, JWT_SECRET, ANTHROPIC_API_KEY, CADDY
 docker compose -f docker-compose.yml -f deploy/docker-compose.caddy-externo.yml --profile prod up -d --build
 ```
 
-- Contenedores `mihistorias-web` (nginx: app + proxy a la API) y `mihistorias-api` (red interna), más PostgreSQL.
-- Solo `mihistorias-web` se conecta a la red de tu Caddy. En el Caddyfile del VPS va el bloque `mihistorias.pulsso.online { reverse_proxy mihistorias-web:80 }` (ver la guía); el certificado SSL lo saca Caddy solo.
+- Contenedores `mihistorias-web` (nginx: app + proxy a la API) y `mihistorias-api` (puerto **6000**), más PostgreSQL.
+- La web y la API se conectan a la red de tu Caddy. En el Caddyfile del VPS van `mihistorias.pulsso.online { reverse_proxy mihistorias-web:80 }` y `mihistorias-api.pulsso.online { reverse_proxy mihistorias-api:6000 }` (ver la guía); el certificado SSL lo saca Caddy solo.
 - Para cerrar el registro de cuentas nuevas: `ALLOW_REGISTRATION=false` (el primer usuario siempre puede registrarse).
 
 ## Qué incluye
@@ -46,8 +46,8 @@ docker compose -f docker-compose.yml -f deploy/docker-compose.caddy-externo.yml 
 
 ```bash
 docker compose up -d db
-cd backend && npm install && npm run dev      # API en :3000 (o deja corriendo la de Docker)
-cd frontend && npm install && npm run dev     # app en :5173 (proxy /api → :3000)
+cd backend && npm install && npm run dev      # API en :6000 (o deja corriendo la de Docker)
+cd frontend && npm install && npm run dev     # app en :5173 (proxy /api → :6000)
 ```
 
 ## Notas
