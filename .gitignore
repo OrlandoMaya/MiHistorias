@@ -5,6 +5,6 @@ dist
 # Secretos y configuración local
 .env
 
-# Datos de pacientes: nunca al repositorio
-uploads/
-respaldos/
+# Datos de pacientes: nunca al repositorio (solo en la raíz; backend/src/uploads es código)
+/uploads/
+/respaldos/
